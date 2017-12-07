@@ -16,6 +16,10 @@ The comprehensive camera module for React Native. Including photographs, videos,
 - if on react-native >= 0.40 `npm i react-native-camera@0.6`
 
 ##### Permissions
+To use the camera on Android you must ask for camera permission:
+```java
+  <uses-permission android:name="android.permission.CAMERA" />
+```
 To enable `video recording` feature you have to add the following code to the `AndroidManifest.xml`:
 ```java
   <uses-permission android:name="android.permission.RECORD_AUDIO"/>
@@ -128,11 +132,19 @@ class BadInstagramCloneApp extends Component {
           ref={(cam) => {
             this.camera = cam;
           }}
+	  onBarCodeRead={this.onBarCodeRead.bind(this)}
           style={styles.preview}
           aspect={Camera.constants.Aspect.fill}>
           <Text style={styles.capture} onPress={this.takePicture.bind(this)}>[CAPTURE]</Text>
         </Camera>
       </View>
+    );
+  }
+  
+  onBarCodeRead(e) {
+    console.log(
+        "Barcode Found!",
+        "Type: " + e.type + "\nData: " + e.data
     );
   }
 
@@ -239,7 +251,7 @@ The following barcode types can be recognised:
 - `code39`
 - `code39mod43`
 - `code93`
-- `ean13`
+- `ean13` (`iOS` converts `upca` barcodes to `ean13` by adding a leading 0)
 - `ean8`
 - `pdf417`
 - `qr`
@@ -280,6 +292,15 @@ By default, `onFocusChanged` is not defined and tap-to-focus is disabled.
 Android: This callback is not yet implemented. However, Android will
 automatically do tap-to-focus if the device supports auto-focus; there is
 currently no way to manage this from javascript.
+
+To get autofocus/tap to focus functionalities working correctly in android
+make sure that the proper permissions are set in your `AndroidManifest.xml`:
+```java
+    <uses-feature android:name="android.hardware.camera" />
+    <uses-feature android:name="android.hardware.camera.autofocus" />
+```
+
+
 
 #### `iOS` `defaultOnFocusComponent`
 
@@ -353,6 +374,14 @@ Returns whether or not the camera has flash capabilities.
 #### `stopCapture()`
 
 Ends the current capture session for video captures. Only applies when the current `captureMode` is `video`.
+
+#### `stopPreview()`
+
+Stops the camera preview from running, and natively will make the current capture session pause.
+
+#### `startPreview()`
+
+Starts the camera preview again if previously stopped.
 
 ## Component static methods
 

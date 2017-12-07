@@ -618,7 +618,7 @@ public class RCTCameraModule extends ReactContextBaseJavaModule
                 }
 
                 try {
-                    mutableImage.writeDataToFile(pictureFile, options, 85);
+                    mutableImage.writeDataToFile(pictureFile, options, jpegQualityPercent);
                 } catch (IOException e) {
                     promise.reject("failed to save image file", e);
                     return;
@@ -636,7 +636,7 @@ public class RCTCameraModule extends ReactContextBaseJavaModule
                 }
 
                 try {
-                    mutableImage.writeDataToFile(tempFile, options, 85);
+                    mutableImage.writeDataToFile(tempFile, options, jpegQualityPercent);
                 } catch (IOException e) {
                     promise.reject("failed to save image file", e);
                     return;
@@ -657,6 +657,28 @@ public class RCTCameraModule extends ReactContextBaseJavaModule
         } else {
             promise.resolve("Not recording.");
         }
+    }
+
+    @ReactMethod
+    public void stopPreview(ReadableMap options) {
+        RCTCamera instance = RCTCamera.getInstance();
+        if (instance == null) return;
+
+        Camera camera = instance.acquireCameraInstance(options.getInt("type"));
+        if (camera == null) return;
+
+        camera.stopPreview();
+    }
+
+    @ReactMethod
+    public void startPreview(ReadableMap options) {
+        RCTCamera instance = RCTCamera.getInstance();
+        if (instance == null) return;
+
+        Camera camera = instance.acquireCameraInstance(options.getInt("type"));
+        if (camera == null) return;
+
+        camera.startPreview();
     }
 
     @ReactMethod
