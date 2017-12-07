@@ -4,7 +4,7 @@
 
 @class RCTCameraManager;
 
-@interface RCTCamera : UIView
+@interface RCTCamera2 : UIView
 
 - (id)initWithManager:(RCTCameraManager*)manager bridge:(RCTBridge *)bridge;
 

@@ -3,7 +3,7 @@
  * Android video recording support by Marc Johnson (me@marc.mn) 4/2016
  */
 
-package com.lwansbrough.RCTCamera;
+package com.lwansbrough.RCTCamera2;
 
 import android.content.ContentValues;
 import android.hardware.Camera;
@@ -37,7 +37,7 @@ import javax.annotation.Nullable;
 
 public class RCTCameraModule extends ReactContextBaseJavaModule
     implements MediaRecorder.OnInfoListener, MediaRecorder.OnErrorListener, LifecycleEventListener {
-    private static final String TAG = "RCTCameraModule";
+    private static final String TAG = "RCTCameraModule2";
 
     public static final int RCT_CAMERA_ASPECT_FILL = 0;
     public static final int RCT_CAMERA_ASPECT_FIT = 1;
@@ -135,7 +135,7 @@ public class RCTCameraModule extends ReactContextBaseJavaModule
 
     @Override
     public String getName() {
-        return "RCTCameraModule";
+        return "RCTCameraModule2";
     }
 
     @Nullable

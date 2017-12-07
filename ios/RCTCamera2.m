@@ -1,5 +1,5 @@
 #import <React/RCTBridge.h>
-#import "RCTCamera.h"
+#import "RCTCamera2.h"
 #import "RCTCameraManager.h"
 #import <React/RCTLog.h>
 #import <React/RCTUtils.h>
@@ -10,7 +10,7 @@
 #import <AVFoundation/AVFoundation.h>
 #import "CameraFocusSquare.h"
 
-@interface RCTCamera ()
+@interface RCTCamera2 ()
 
 @property (nonatomic, weak) RCTCameraManager *manager;
 @property (nonatomic, weak) RCTBridge *bridge;
@@ -18,7 +18,7 @@
 
 @end
 
-@implementation RCTCamera
+@implementation RCTCamera2
 {
   BOOL _multipleTouches;
   BOOL _onFocusChanged;

@@ -1,5 +1,5 @@
 #import "RCTCameraManager.h"
-#import "RCTCamera.h"
+#import "RCTCamera2.h"
 #import <React/RCTBridge.h>
 #import <React/RCTEventDispatcher.h>
 #import <React/RCTUtils.h>
@@ -36,7 +36,7 @@
 
 @end
 
-@implementation RCTCameraManager
+@implementation RCTCameraManager2
 
 RCT_EXPORT_MODULE();
 

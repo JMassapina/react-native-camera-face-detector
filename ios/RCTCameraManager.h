@@ -1,7 +1,7 @@
 #import <React/RCTViewManager.h>
 #import <AVFoundation/AVFoundation.h>
 
-@class RCTCamera;
+@class RCTCamera2;
 
 typedef NS_ENUM(NSInteger, RCTCameraAspect) {
   RCTCameraAspectFill = 0,
@@ -56,7 +56,7 @@ typedef NS_ENUM(NSInteger, RCTCameraTorchMode) {
   RCTCameraTorchModeAuto = AVCaptureTorchModeAuto
 };
 
-@interface RCTCameraManager : RCTViewManager<AVCaptureFileOutputRecordingDelegate, AVCaptureVideoDataOutputSampleBufferDelegate>
+@interface RCTCameraManager2 : RCTViewManager<AVCaptureFileOutputRecordingDelegate, AVCaptureVideoDataOutputSampleBufferDelegate>
 
 @property (nonatomic, strong) dispatch_queue_t sessionQueue;
 @property (nonatomic, strong) AVCaptureSession *session;
@@ -76,7 +76,7 @@ typedef NS_ENUM(NSInteger, RCTCameraTorchMode) {
 @property (nonatomic, assign) BOOL faceDetection;
 @property (nonatomic, strong) RCTPromiseResolveBlock videoResolve;
 @property (nonatomic, strong) RCTPromiseRejectBlock videoReject;
-@property (nonatomic, strong) RCTCamera *camera;
+@property (nonatomic, strong) RCTCamera2 *camera;
 
 
 - (void)changeOrientation:(NSInteger)orientation;

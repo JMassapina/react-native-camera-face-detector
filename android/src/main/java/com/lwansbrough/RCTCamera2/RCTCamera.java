@@ -2,7 +2,7 @@
  * Created by Fabrice Armisen (farmisen@gmail.com) on 1/4/16.
  */
 
-package com.lwansbrough.RCTCamera;
+package com.lwansbrough.RCTCamera2;
 
 import android.hardware.Camera;
 import android.media.CamcorderProfile;

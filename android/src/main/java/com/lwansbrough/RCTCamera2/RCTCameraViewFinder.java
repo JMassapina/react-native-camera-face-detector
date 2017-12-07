@@ -2,7 +2,7 @@
  * Created by Fabrice Armisen (farmisen@gmail.com) on 1/3/16.
  */
 
-package com.lwansbrough.RCTCamera;
+package com.lwansbrough.RCTCamera2;
 
 import android.content.Context;
 import android.graphics.Rect;
