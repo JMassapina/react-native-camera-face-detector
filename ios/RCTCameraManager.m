@@ -11,10 +11,28 @@
 #import <ImageIO/ImageIO.h>
 #import "RCTSensorOrientationChecker.h"
 
+#define LogBool(BOOLVARIABLE) BOOLVARIABLE ? @"YES" : @"NO"
+
+
 @interface RCTCameraManager ()
 
 @property (strong, nonatomic) RCTSensorOrientationChecker * sensorOrientationChecker;
 @property (assign, nonatomic) NSInteger* flashMode;
+
+@property (assign, nonatomic) BOOL faceDetected;
+@property (assign, nonatomic) CGRect faceBounds;
+@property (assign, nonatomic) CGFloat faceAngle;
+@property (assign, nonatomic) CGFloat faceAngleDifference;
+@property (assign, nonatomic) CGFloat leftEyePosition;
+@property (assign, nonatomic) CGFloat rightEyePosition;
+@property (assign, nonatomic) CGPoint mouthPosition;
+@property (assign, nonatomic) BOOL hasSmile;
+@property (assign, nonatomic) BOOL isBlinking;
+@property (assign, nonatomic) BOOL isBlinked;
+@property (assign, nonatomic) BOOL isWinking;
+@property (assign, nonatomic) BOOL leftEyeClosed;
+@property (assign, nonatomic) BOOL rightEyeClosed;
+@property (assign, nonatomic) BOOL onlyFireNotificationOnStatusChange;
 
 @end
 
@@ -320,13 +338,13 @@ RCT_CUSTOM_VIEW_PROPERTY(captureAudio, BOOL, RCTCamera) {
 
 - (NSArray *)metaDataObjectTypes:(AVCaptureMetadataOutput*)metadataOutput {
     NSMutableArray *types = [self.barCodeTypes mutableCopy];
-    
+
     if(self.faceDetection) {
         if([metadataOutput.availableMetadataObjectTypes containsObject:AVMetadataObjectTypeFace]) {
             [types addObject:AVMetadataObjectTypeFace];
         }
     }
-    
+
     return types;
 }
 
@@ -337,6 +355,9 @@ RCT_CUSTOM_VIEW_PROPERTY(captureAudio, BOOL, RCTCamera) {
     self.sessionQueue = dispatch_queue_create("cameraManagerQueue", DISPATCH_QUEUE_SERIAL);
 
     self.sensorOrientationChecker = [RCTSensorOrientationChecker new];
+
+    self.faceDetected = false;
+    self.isBlinked = false;
   }
   return self;
 }
@@ -477,20 +498,22 @@ RCT_EXPORT_METHOD(hasFlash:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRej
       self.stillImageOutput = stillImageOutput;
     }
 
-    AVCaptureMovieFileOutput *movieFileOutput = [[AVCaptureMovieFileOutput alloc] init];
-    if ([self.session canAddOutput:movieFileOutput])
-    {
-      [self.session addOutput:movieFileOutput];
-      self.movieFileOutput = movieFileOutput;
-    }
+      AVCaptureVideoDataOutput *videoDataOutput = [[AVCaptureVideoDataOutput alloc] init];
+      if ([self.session canAddOutput:videoDataOutput]) {
+          [videoDataOutput setSampleBufferDelegate:self queue: self.sessionQueue];
 
-    AVCaptureMetadataOutput *metadataOutput = [[AVCaptureMetadataOutput alloc] init];
-    if ([self.session canAddOutput:metadataOutput]) {
-      [metadataOutput setMetadataObjectsDelegate:self queue:self.sessionQueue];
-      [self.session addOutput:metadataOutput];
-      [metadataOutput setMetadataObjectTypes:[self metaDataObjectTypes:metadataOutput]];
-      self.metadataOutput = metadataOutput;
-    }
+          videoDataOutput.alwaysDiscardsLateVideoFrames = NO;
+
+          NSString *key = (NSString *)kCVPixelBufferPixelFormatTypeKey;
+          NSNumber *value = [NSNumber numberWithUnsignedInt:kCVPixelFormatType_32BGRA];
+          NSDictionary *videoSettings = [NSDictionary dictionaryWithObject:value forKey:key];
+          videoDataOutput.videoSettings = videoSettings;
+
+          [self.session addOutput:videoDataOutput];
+          self.videoDataOutput = videoDataOutput;
+
+          NSLog(@"good to go: %@", self.videoDataOutput);
+      }
 
     __weak RCTCameraManager *weakSelf = self;
     [self setRuntimeErrorHandlingObserver:[NSNotificationCenter.defaultCenter addObserverForName:AVCaptureSessionRuntimeErrorNotification object:self.session queue:nil usingBlock:^(NSNotification *note) {
@@ -925,7 +948,7 @@ didFinishRecordingToOutputFileAtURL:(NSURL *)outputFileURL
 - (void)captureOutput:(AVCaptureOutput *)captureOutput didOutputMetadataObjects:(NSArray *)metadataObjects fromConnection:(AVCaptureConnection *)connection {
   BOOL didSendFace = NO;
   BOOL isFrontCamera = self.presetCamera == RCTCameraTypeFront;
-    
+
   for (AVMetadataFaceObject *metadata in metadataObjects) {
     for (id barcodeType in self.barCodeTypes) {
       if ([metadata.type isEqualToString:barcodeType]) {
@@ -950,10 +973,13 @@ didFinishRecordingToOutputFileAtURL:(NSURL *)outputFileURL
         [self.bridge.eventDispatcher sendAppEventWithName:@"CameraBarCodeRead" body:event];
       }
     }
-      
+
     if([metadata.type isEqualToString:AVMetadataObjectTypeFace]) {
       AVMetadataFaceObject *transformed = (AVMetadataFaceObject *)[self.previewLayer transformedMetadataObjectForMetadataObject:metadata];
-      
+
+//     NSLog(@"metada: %@", metadata);
+//     NSLog(@"transformed: %@", transformed);
+
       NSDictionary *event = @{
         @"type": metadata.type,
         @"isFrontCamera": @(isFrontCamera),
@@ -963,17 +989,174 @@ didFinishRecordingToOutputFileAtURL:(NSURL *)outputFileURL
         @"h": [NSNumber numberWithDouble:transformed.bounds.size.height],
         @"w": [NSNumber numberWithDouble:transformed.bounds.size.width]
       };
-      
+
       [self.bridge.eventDispatcher sendAppEventWithName:@"CameraFaceDetected" body:event];
       didSendFace = YES;
     }
   }
-  
+
   if (!didSendFace) {
     [self.bridge.eventDispatcher sendAppEventWithName:@"CameraFaceDetected" body:@{ @"isFrontCamera": @(isFrontCamera), @"bounds": [NSNull null] }];
   }
 }
 
+- (void)captureOutput:(AVCaptureOutput *)output didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer fromConnection:(AVCaptureConnection *)connection {
+
+    CIContext  *context  = [CIContext contextWithOptions:nil];
+    CIDetector *faceDetector = [CIDetector detectorOfType:CIDetectorTypeFace context:context
+                                                  options:@{CIDetectorAccuracy:CIDetectorAccuracyHigh}];
+
+    NSLog(@"faceDector %@", faceDetector);
+
+    //NSArray *options = @{CIDetectorSmile: true, CIDetectorEyeBlink: true, CIDetectorImageOrientation: 6};
+
+    CVPixelBufferRef pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer);
+    CFDictionaryRef attachments = CMCopyDictionaryOfAttachments(kCFAllocatorDefault, sampleBuffer, kCMAttachmentMode_ShouldPropagate);
+    CIImage *ciImage = [[CIImage alloc] initWithCVPixelBuffer:pixelBuffer options:(__bridge NSDictionary *)attachments];
+
+    BOOL isFrontCamera = self.presetCamera == RCTCameraTypeFront;
+
+    NSArray *features = [faceDetector featuresInImage:ciImage options:@{ CIDetectorSmile: @YES,
+                                                                          CIDetectorEyeBlink: @YES,
+                                                                          CIDetectorImageOrientation: @6 }];
+
+    if ([features count] != 0) {
+        NSLog(@"FACE DETECT there is a feature: %@", features);
+
+        if (_onlyFireNotificationOnStatusChange == true) {
+            if (_faceDetected == false) {
+                NSLog(@"faceDetectionNotification");
+            }
+        }
+
+        _faceDetected = true;
+
+        for (CIFaceFeature *feature in features) {
+            _faceBounds = feature.bounds;
+
+            if (feature.hasFaceAngle) {
+                if (!_faceAngle) {
+                    _faceAngleDifference = feature.faceAngle - _faceAngle;
+                } else {
+                    _faceAngleDifference = feature.faceAngle;
+                }
+
+                _faceAngle = feature.faceAngle;
+            }
+
+            if (feature.leftEyeClosed || feature.rightEyeClosed) {
+                if (_onlyFireNotificationOnStatusChange == true) {
+                    if (_isWinking == false) {
+                        NSLog(@"winkingNotification");
+                    }
+                }
+
+                self.isWinking = true;
+
+                if (feature.leftEyeClosed) {
+                    if (_onlyFireNotificationOnStatusChange == true) {
+                        if (_leftEyeClosed == false) {
+                            NSLog(@"leftEyeClosedNotification");
+                        }
+                    }
+
+                    _leftEyeClosed = feature.leftEyeClosed;
+                }
+
+                if (feature.rightEyeClosed) {
+                    if (_onlyFireNotificationOnStatusChange == true) {
+                        if (_rightEyeClosed == false) {
+                            NSLog(@"rightEyeClosedNotification");
+                        }
+                    }
+
+                    _rightEyeClosed = feature.rightEyeClosed;
+                }
+
+                if (feature.leftEyeClosed && feature.rightEyeClosed) {
+                    if (_onlyFireNotificationOnStatusChange == true) {
+                        if (_isBlinked == false) {
+                            NSLog(@"blinkingNotification");
+                        }
+                    }
+                }
+
+                if (_isBlinked == true) {
+                    _isBlinked = false;
+                    _isBlinking = false;
+                }
+            } else { // leftEye and rightEye is closed
+                if (_onlyFireNotificationOnStatusChange == true) {
+                    if (_isBlinking == true) {
+                        NSLog(@"notBlinkingNotification");
+                    }
+                    if (_isWinking == true) {
+                        NSLog(@"notWinkingNotification");
+                    }
+                    if (_leftEyeClosed == true) {
+                        NSLog(@"leftEyeOpenNotification");
+                    }
+                    if (_rightEyeClosed == true) {
+                        NSLog(@"rightEyeOpenNotification");
+                    }
+                }
+
+                if (_isBlinked == false) {
+                    _isBlinked = true;
+                }
+
+                _isBlinking = false;
+                _isWinking = false;
+                _leftEyeClosed = feature.leftEyeClosed;
+                _rightEyeClosed = feature.rightEyeClosed;
+            }
+        }
+    } else { // no features found
+        if (_onlyFireNotificationOnStatusChange == true) {
+            if (_faceDetected == true) {
+                NSLog(@"noFaceDetectedNotification");
+            }
+        }
+        _faceDetected = false;
+        _isBlinked = false;
+        _isBlinking = false;
+        _isWinking = false;
+        _leftEyeClosed = false;
+        _leftEyeClosed = false;
+        NSLog(@"No face detected");
+    }
+
+    NSLog(@"faceDetected: %@", LogBool(_faceDetected));
+    NSLog(@"faceAngle: %f", _faceAngle);
+    NSLog(@"faceAngleDifference: %f", _faceAngleDifference);
+    NSLog(@"leftEyePosition: %f", _leftEyePosition);
+    NSLog(@"rightEyePosition: %f", _rightEyePosition);
+    NSLog(@"mouthPosition: %@", _mouthPosition);
+    NSLog(@"hasSmile: %@", LogBool(_hasSmile));
+    NSLog(@"isBlinking: %@", LogBool(_isBlinking));
+    NSLog(@"isBlinked: %@", LogBool(_isBlinked));
+    NSLog(@"isWinking: %@", LogBool(_isWinking));
+    NSLog(@"leftEyeClosed: %@", LogBool(_leftEyeClosed));
+    NSLog(@"rightEyeClosed: %@", LogBool(_rightEyeClosed));
+    NSLog(@"\n\n");
+
+    if (_faceDetected == true) {
+        NSDictionary *event = @{
+                                @"faceDetected": [NSNumber numberWithBool:_faceDetected],
+                                @"isBlinking": [NSNumber numberWithBool:_isBlinking],
+                                @"isBlinked": [NSNumber numberWithBool:_isBlinked],
+                                @"isWinking": [NSNumber numberWithBool:_isWinking],
+                                @"leftEyeClosed": [NSNumber numberWithBool:_leftEyeClosed],
+                                @"rightEyeClosed": [NSNumber numberWithBool:_rightEyeClosed],
+                                @"hasSmile": [NSNumber numberWithBool:_hasSmile],
+                                };
+
+        [self.bridge.eventDispatcher sendAppEventWithName:@"CameraFaceDetected" body:event];
+    }
+}
+
+- (void)captureOutput:(AVCaptureOutput *)output didDropSampleBuffer:(CMSampleBufferRef)sampleBuffer fromConnection:(AVCaptureConnection *)connection {
+}
 
 - (AVCaptureDevice *)deviceWithMediaType:(NSString *)mediaType preferringPosition:(AVCaptureDevicePosition)position
 {
