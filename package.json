@@ -1,7 +1,7 @@
 {
   "name": "@entrai/react-native-camera-face-detector",
   "description": "react-native-camera with face detection",
-  "version": "0.12.0",
+  "version": "0.12.1",
   "author": "Entria",
   "collective": {
     "type": "opencollective",
