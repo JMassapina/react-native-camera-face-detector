@@ -272,7 +272,6 @@ class RCTCameraViewFinder extends TextureView implements TextureView.SurfaceText
             }
         }
     }
-}
 
     /**
      * Parse barcodes as BarcodeFormat constants.
