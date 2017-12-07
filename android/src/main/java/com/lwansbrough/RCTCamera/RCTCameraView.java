@@ -5,12 +5,13 @@
 package com.lwansbrough.RCTCamera;
 
 import android.content.Context;
-import android.graphics.*;
 import android.hardware.SensorManager;
 import android.view.OrientationEventListener;
 import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.view.View;
+
+import java.util.List;
 
 public class RCTCameraView extends ViewGroup {
     private final OrientationEventListener _orientationListener;
@@ -18,6 +19,7 @@ public class RCTCameraView extends ViewGroup {
     private RCTCameraViewFinder _viewFinder = null;
     private int _actualDeviceOrientation = -1;
     private int _aspect = RCTCameraModule.RCT_CAMERA_ASPECT_FIT;
+    private int _captureMode = RCTCameraModule.RCT_CAMERA_CAPTURE_MODE_STILL;
     private String _captureQuality = "high";
     private int _torchMode = -1;
     private int _flashMode = -1;
@@ -25,7 +27,7 @@ public class RCTCameraView extends ViewGroup {
     public RCTCameraView(Context context) {
         super(context);
         this._context = context;
-        setActualDeviceOrientation(context);
+        RCTCamera.createInstance(getDeviceOrientation(context));
 
         _orientationListener = new OrientationEventListener(context, SensorManager.SENSOR_DELAY_NORMAL) {
             @Override
@@ -65,15 +67,23 @@ public class RCTCameraView extends ViewGroup {
     public void setCameraType(final int type) {
         if (null != this._viewFinder) {
             this._viewFinder.setCameraType(type);
+            RCTCamera.getInstance().adjustPreviewLayout(type);
         } else {
             _viewFinder = new RCTCameraViewFinder(_context, type);
             if (-1 != this._flashMode) {
                 _viewFinder.setFlashMode(this._flashMode);
             }
             if (-1 != this._torchMode) {
-                _viewFinder.setFlashMode(this._torchMode);
+                _viewFinder.setTorchMode(this._torchMode);
             }
             addView(_viewFinder);
+        }
+    }
+
+    public void setCaptureMode(final int captureMode) {
+        this._captureMode = captureMode;
+        if (this._viewFinder != null) {
+            this._viewFinder.setCaptureMode(captureMode);
         }
     }
 
@@ -105,8 +115,16 @@ public class RCTCameraView extends ViewGroup {
         }
     }
 
+    public void setBarcodeScannerEnabled(boolean barcodeScannerEnabled) {
+        RCTCamera.getInstance().setBarcodeScannerEnabled(barcodeScannerEnabled);
+    }
+
+    public void setBarCodeTypes(List<String> types) {
+        RCTCamera.getInstance().setBarCodeTypes(types);
+    }
+
     private boolean setActualDeviceOrientation(Context context) {
-        int actualDeviceOrientation = ((WindowManager) context.getSystemService(Context.WINDOW_SERVICE)).getDefaultDisplay().getOrientation();
+        int actualDeviceOrientation = getDeviceOrientation(context);
         if (_actualDeviceOrientation != actualDeviceOrientation) {
             _actualDeviceOrientation = actualDeviceOrientation;
             RCTCamera.getInstance().setActualDeviceOrientation(_actualDeviceOrientation);
@@ -114,6 +132,10 @@ public class RCTCameraView extends ViewGroup {
         } else {
             return false;
         }
+    }
+
+    private int getDeviceOrientation(Context context) {
+        return ((WindowManager) context.getSystemService(Context.WINDOW_SERVICE)).getDefaultDisplay().getOrientation();
     }
 
     private void layoutViewFinder() {

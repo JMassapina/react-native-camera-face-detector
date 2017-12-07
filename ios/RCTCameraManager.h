@@ -1,4 +1,4 @@
-#import "RCTViewManager.h"
+#import <React/RCTViewManager.h>
 #import <AVFoundation/AVFoundation.h>
 
 @class RCTCamera;
@@ -7,6 +7,16 @@ typedef NS_ENUM(NSInteger, RCTCameraAspect) {
   RCTCameraAspectFill = 0,
   RCTCameraAspectFit = 1,
   RCTCameraAspectStretch = 2
+};
+
+typedef NS_ENUM(NSInteger, RCTCameraCaptureSessionPreset) {
+  RCTCameraCaptureSessionPresetLow = 0,
+  RCTCameraCaptureSessionPresetMedium = 1,
+  RCTCameraCaptureSessionPresetHigh = 2,
+  RCTCameraCaptureSessionPresetPhoto = 3,
+  RCTCameraCaptureSessionPreset480p = 4,
+  RCTCameraCaptureSessionPreset720p = 5,
+  RCTCameraCaptureSessionPreset1080p = 6
 };
 
 typedef NS_ENUM(NSInteger, RCTCameraCaptureMode) {
